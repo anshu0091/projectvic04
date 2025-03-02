@@ -42,7 +42,7 @@
     "@supabase/auth-helpers-nextjs": "^0.9.0",
     "@supabase/supabase-js": "^2.39.0",
     "@types/node": "20.6.2",
-    "@types/react": "18.2.22",
+    "@types/react": "^18.2.25",
     "@types/react-dom": "18.2.7",
     "autoprefixer": "10.4.15",
     "bufferutil": "^4.0.9",
