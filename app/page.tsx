@@ -24,7 +24,7 @@ export default function Home() {
         <div className="container mx-auto px-4 md:px-6">
           <div className="max-w-3xl">
             <h1 className="text-4xl md:text-6xl font-bold text-white mb-6">
-              Revolutionizing Sustainability with Crypto-Powered Carbon Credits
+              Revolutionizing Sustainability with Crypto Carbon Credits
             </h1>
             <p className="text-xl text-gray-200 mb-8">
               Join the future of environmental conservation through blockchain technology. Trade verified carbon credits seamlessly and make a real impact on climate change.
