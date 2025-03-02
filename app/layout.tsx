@@ -6,7 +6,7 @@ import { ReduxProvider } from '@/lib/redux/provider';
 const inter = Inter({ subsets: ['latin'] });
 
 export const metadata: Metadata = {
-  title: 'Vectorium - Crypto-Powered Carbon Credits',
+  title: 'Vectorium - Crypto Carbon Credits',
   description: 'Revolutionizing sustainability through blockchain technology and carbon credits trading.',
 };
 
