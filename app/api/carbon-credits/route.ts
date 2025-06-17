@@ -1,0 +1,88 @@
+import { NextRequest, NextResponse } from 'next/server';
+import { createClient } from '@supabase/supabase-js';
+
+const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
+const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY!;
+
+// Use service role key for server-side operations
+const supabase = createClient(supabaseUrl, supabaseServiceKey);
+
+export async function GET(request: NextRequest) {
+  try {
+    const { searchParams } = new URL(request.url);
+    const category = searchParams.get('category');
+    const minPrice = searchParams.get('minPrice');
+    const maxPrice = searchParams.get('maxPrice');
+    const location = searchParams.get('location');
+    const vintage = searchParams.get('vintage');
+
+    let query = supabase
+      .from('carbon_credits')
+      .select('*')
+      .eq('status', 'available')
+      .order('created_at', { ascending: false });
+
+    // Apply filters
+    if (category) {
+      query = query.eq('category', category);
+    }
+    if (minPrice) {
+      query = query.gte('price', parseFloat(minPrice));
+    }
+    if (maxPrice) {
+      query = query.lte('price', parseFloat(maxPrice));
+    }
+    if (location) {
+      query = query.eq('location', location);
+    }
+    if (vintage) {
+      query = query.eq('vintage', vintage);
+    }
+
+    const { data, error } = await query;
+
+    if (error) {
+      console.error('Error fetching carbon credits:', error);
+      return NextResponse.json(
+        { error: 'Failed to fetch carbon credits' },
+        { status: 500 }
+      );
+    }
+
+    return NextResponse.json({ data });
+  } catch (error) {
+    console.error('Unexpected error:', error);
+    return NextResponse.json(
+      { error: 'Internal server error' },
+      { status: 500 }
+    );
+  }
+}
+
+export async function POST(request: NextRequest) {
+  try {
+    const body = await request.json();
+    
+    const { data, error } = await supabase
+      .from('carbon_credits')
+      .insert([body])
+      .select()
+      .single();
+
+    if (error) {
+      console.error('Error creating carbon credit:', error);
+      return NextResponse.json(
+        { error: 'Failed to create carbon credit' },
+        { status: 500 }
+      );
+    }
+
+    return NextResponse.json({ data }, { status: 201 });
+  } catch (error) {
+    console.error('Unexpected error:', error);
+    return NextResponse.json(
+      { error: 'Internal server error' },
+      { status: 500 }
+    );
+  }
+}

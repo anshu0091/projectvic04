@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react';
 import { supabase } from '@/lib/supabase';
 import { useRouter } from 'next/navigation';
 import { useAppSelector, useAppDispatch } from '@/lib/redux/hooks';
-import { sellCarbonCredit } from '@/lib/redux/slices/walletSlice';
+import { sellCarbonCredit, fetchWalletData } from '@/lib/redux/slices/walletSlice';
 import Image from 'next/image';
 import Link from 'next/link';
 import { Wallet, ArrowUpRight, TrendingUp, TrendingDown, Leaf, ChevronDown, X, Info, DollarSign, BarChart2 } from 'lucide-react';
@@ -22,7 +22,7 @@ const WalletPage: NextPage = () => {
   
   const router = useRouter();
   const dispatch = useAppDispatch();
-  const { balance, carbonCredits, transactions } = useAppSelector(state => state.wallet);
+  const { balance, carbonCredits, transactions, loading: walletLoading } = useAppSelector(state => state.wallet);
   
   const totalCarbonReduction = carbonCredits.reduce((acc, credit) => acc + credit.carbonReduction, 0);
 
@@ -31,6 +31,8 @@ const WalletPage: NextPage = () => {
       const { data } = await supabase.auth.getUser();
       if (data.user) {
         setUser(data.user);
+        // Fetch wallet data for the authenticated user
+        dispatch(fetchWalletData(data.user.id));
       } else {
         router.push('/auth/login');
       }
@@ -38,7 +40,7 @@ const WalletPage: NextPage = () => {
     };
 
     checkUser();
-  }, [router]);
+  }, [router, dispatch]);
 
   const openSellModal = (credit: any) => {
     setSelectedCredit(credit);
@@ -130,6 +132,13 @@ const WalletPage: NextPage = () => {
               </div>
             </div>
           </div>
+          
+          {/* Loading State */}
+          {walletLoading && (
+            <div className="flex justify-center items-center py-12">
+              <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-emerald-500"></div>
+            </div>
+          )}
           
           {/* Tabs */}
           <div className="bg-white rounded-lg shadow-sm mb-8">

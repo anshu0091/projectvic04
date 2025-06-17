@@ -3,7 +3,8 @@
 import { useEffect, useState } from 'react';
 import { supabase } from '@/lib/supabase';
 import { useRouter } from 'next/navigation';
-import { useAppSelector } from '@/lib/redux/hooks';
+import { useAppSelector, useAppDispatch } from '@/lib/redux/hooks';
+import { fetchWalletData } from '@/lib/redux/slices/walletSlice';
 import Image from 'next/image';
 import Link from 'next/link';
 import { LogOut, User, Settings, CreditCard, BarChart2, FileText, ShoppingCart, Wallet, Leaf, ArrowRight, TrendingUp, TrendingDown } from 'lucide-react';
@@ -12,6 +13,7 @@ export default function Dashboard() {
   const [user, setUser] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const router = useRouter();
+  const dispatch = useAppDispatch();
   const { balance, carbonCredits, transactions } = useAppSelector(state => state.wallet);
   const totalCarbonReduction = carbonCredits.reduce((acc, credit) => acc + credit.carbonReduction, 0);
   const totalCredits = carbonCredits.reduce((acc, credit) => acc + credit.quantity, 0);
@@ -21,6 +23,8 @@ export default function Dashboard() {
       const { data } = await supabase.auth.getUser();
       if (data.user) {
         setUser(data.user);
+        // Fetch wallet data for the authenticated user
+        dispatch(fetchWalletData(data.user.id));
       } else {
         router.push('/auth/login');
       }
@@ -28,7 +32,7 @@ export default function Dashboard() {
     };
 
     checkUser();
-  }, [router]);
+  }, [router, dispatch]);
 
   const handleSignOut = async () => {
     await supabase.auth.signOut();

@@ -1,4 +1,5 @@
-import { createSlice, PayloadAction } from '@reduxjs/toolkit';
+import { createSlice, PayloadAction, createAsyncThunk } from '@reduxjs/toolkit';
+import { fetchCarbonCredits } from '@/lib/api/marketplace';
 
 export interface CarbonCredit {
   id: string;
@@ -35,104 +36,7 @@ export interface MarketplaceState {
 }
 
 const initialState: MarketplaceState = {
-  listings: [
-    {
-      id: '1',
-      name: 'Amazon Rainforest Conservation',
-      description: 'Carbon credits from protecting the Amazon rainforest from deforestation.',
-      price: 15.50,
-      quantity: 1000,
-      projectName: 'Amazon Preservation Initiative',
-      location: 'Brazil',
-      certificationBody: 'Verra',
-      vintage: '2024',
-      imageUrl: 'https://images.unsplash.com/photo-1516026672322-bc52d61a55d5?q=80&w=2072&auto=format&fit=crop',
-      seller: '0x1234...5678',
-      carbonReduction: 1000,
-      category: 'forestry',
-      status: 'available'
-    },
-    {
-      id: '2',
-      name: 'Wind Farm Project',
-      description: 'Credits generated from a wind farm project reducing fossil fuel dependency.',
-      price: 12.75,
-      quantity: 500,
-      projectName: 'Clean Wind Energy',
-      location: 'Germany',
-      certificationBody: 'Gold Standard',
-      vintage: '2023',
-      imageUrl: 'https://images.unsplash.com/photo-1466611653911-95081537e5b7?q=80&w=2070&auto=format&fit=crop',
-      seller: '0x9876...4321',
-      carbonReduction: 500,
-      category: 'renewable',
-      status: 'available'
-    },
-    {
-      id: '3',
-      name: 'Sustainable Agriculture',
-      description: 'Carbon sequestration through sustainable farming practices.',
-      price: 18.25,
-      quantity: 750,
-      projectName: 'Green Farming Initiative',
-      location: 'India',
-      certificationBody: 'Climate Action Reserve',
-      vintage: '2024',
-      imageUrl: 'https://images.unsplash.com/photo-1625246333195-78d9c38ad449?q=80&w=2070&auto=format&fit=crop',
-      seller: '0xabcd...efgh',
-      carbonReduction: 750,
-      category: 'agriculture',
-      status: 'available'
-    },
-    {
-      id: '4',
-      name: 'Methane Capture Project',
-      description: 'Capturing methane emissions from waste management facilities.',
-      price: 20.00,
-      quantity: 300,
-      projectName: 'Waste to Energy',
-      location: 'United States',
-      certificationBody: 'American Carbon Registry',
-      vintage: '2023',
-      imageUrl: 'https://images.unsplash.com/photo-1532996122724-e3c354a0b15b?q=80&w=2070&auto=format&fit=crop',
-      seller: '0xijkl...mnop',
-      carbonReduction: 300,
-      category: 'waste',
-      status: 'available'
-    },
-    {
-      id: '5',
-      name: 'Solar Power Plant',
-      description: 'Credits from a large-scale solar power installation.',
-      price: 14.50,
-      quantity: 1200,
-      projectName: 'Solar Energy Solutions',
-      location: 'Australia',
-      certificationBody: 'Verra',
-      vintage: '2024',
-      imageUrl: 'https://images.unsplash.com/photo-1508514177221-188b1cf16e9d?q=80&w=2072&auto=format&fit=crop',
-      seller: '0xqrst...uvwx',
-      carbonReduction: 1200,
-      category: 'renewable',
-      status: 'available'
-    },
-    {
-      id: '6',
-      name: 'Mangrove Restoration',
-      description: 'Restoring mangrove ecosystems for carbon sequestration and coastal protection.',
-      price: 22.75,
-      quantity: 600,
-      projectName: 'Coastal Ecosystem Restoration',
-      location: 'Indonesia',
-      certificationBody: 'Plan Vivo',
-      vintage: '2023',
-      imageUrl: 'https://images.unsplash.com/photo-1602491453631-e2a5ad90a131?q=80&w=2071&auto=format&fit=crop',
-      seller: '0xyzab...cdef',
-      carbonReduction: 600,
-      category: 'forestry',
-      status: 'available'
-    }
-  ],
+  listings: [],
   filteredListings: [],
   selectedListing: null,
   filters: {
@@ -145,6 +49,18 @@ const initialState: MarketplaceState = {
   loading: false,
   error: null,
 };
+
+// Async thunk for fetching carbon credits
+export const fetchMarketplaceData = createAsyncThunk(
+  'marketplace/fetchData',
+  async (filters?: MarketplaceState['filters']) => {
+    const cleanFilters = filters ? Object.fromEntries(
+      Object.entries(filters).filter(([_, value]) => value !== null)
+    ) : undefined;
+    
+    return await fetchCarbonCredits(cleanFilters);
+  }
+);
 
 export const marketplaceSlice = createSlice({
   name: 'marketplace',
@@ -197,6 +113,22 @@ export const marketplaceSlice = createSlice({
         state.selectedListing = null;
       }
     }
+  },
+  extraReducers: (builder) => {
+    builder
+      .addCase(fetchMarketplaceData.pending, (state) => {
+        state.loading = true;
+        state.error = null;
+      })
+      .addCase(fetchMarketplaceData.fulfilled, (state, action) => {
+        state.loading = false;
+        state.listings = action.payload;
+        state.filteredListings = applyFilters(action.payload, state.filters);
+      })
+      .addCase(fetchMarketplaceData.rejected, (state, action) => {
+        state.loading = false;
+        state.error = action.error.message || 'Failed to fetch marketplace data';
+      });
   },
 });
 

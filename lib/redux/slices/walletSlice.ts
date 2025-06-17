@@ -1,4 +1,5 @@
-import { createSlice, PayloadAction } from '@reduxjs/toolkit';
+import { createSlice, PayloadAction, createAsyncThunk } from '@reduxjs/toolkit';
+import { fetchUserCarbonCredits, fetchUserTransactions, createTransaction } from '@/lib/api/marketplace';
 
 export interface Transaction {
   id: string;
@@ -33,53 +34,92 @@ export interface WalletState {
 
 const initialState: WalletState = {
   balance: 10000, // Starting with demo balance
-  carbonCredits: [
-    {
-      id: '1',
-      name: 'Amazon Rainforest Conservation',
-      quantity: 10,
-      vintage: '2024',
-      certificationBody: 'Verra',
-      carbonReduction: 10,
-    },
-    {
-      id: '2',
-      name: 'Wind Farm Project',
-      quantity: 5,
-      vintage: '2023',
-      certificationBody: 'Gold Standard',
-      carbonReduction: 5,
-    }
-  ],
-  transactions: [
-    {
-      id: 'tx1',
-      type: 'buy',
-      creditId: '1',
-      creditName: 'Amazon Rainforest Conservation',
-      quantity: 10,
-      price: 15.50,
-      totalAmount: 155.00,
-      timestamp: new Date(Date.now() - 86400000).toISOString(), // 1 day ago
-      status: 'completed'
-    },
-    {
-      id: 'tx2',
-      type: 'buy',
-      creditId: '2',
-      creditName: 'Wind Farm Project',
-      quantity: 5,
-      price: 12.75,
-      totalAmount: 63.75,
-      timestamp: new Date(Date.now() - 172800000).toISOString(), // 2 days ago
-      status: 'completed'
-    }
-  ],
+  carbonCredits: [],
+  transactions: [],
   connected: false,
   address: null,
   loading: false,
   error: null
 };
+
+// Async thunks
+export const fetchWalletData = createAsyncThunk(
+  'wallet/fetchData',
+  async (userId: string) => {
+    const [userCredits, userTransactions] = await Promise.all([
+      fetchUserCarbonCredits(userId),
+      fetchUserTransactions(userId)
+    ]);
+
+    return {
+      carbonCredits: userCredits.map((credit: any) => ({
+        id: credit.credit_id,
+        name: credit.carbon_credits.name,
+        quantity: credit.quantity,
+        vintage: credit.carbon_credits.vintage,
+        certificationBody: credit.carbon_credits.certification_body,
+        carbonReduction: credit.carbon_credits.carbon_reduction * credit.quantity
+      })),
+      transactions: userTransactions.map((tx: any) => ({
+        id: tx.id,
+        type: tx.type,
+        creditId: tx.credit_id,
+        creditName: tx.carbon_credits.name,
+        quantity: tx.quantity,
+        price: tx.price,
+        totalAmount: tx.total_amount,
+        timestamp: tx.created_at,
+        status: tx.status,
+        txHash: tx.tx_hash
+      }))
+    };
+  }
+);
+
+export const purchaseCarbonCredit = createAsyncThunk(
+  'wallet/purchaseCredit',
+  async (data: {
+    userId: string;
+    creditId: string;
+    creditName: string;
+    quantity: number;
+    price: number;
+    vintage: string;
+    certificationBody: string;
+    carbonReduction: number;
+  }) => {
+    const transaction = await createTransaction({
+      userId: data.userId,
+      creditId: data.creditId,
+      type: 'buy',
+      quantity: data.quantity,
+      price: data.price
+    });
+
+    return {
+      transaction: {
+        id: transaction.id,
+        type: 'buy' as const,
+        creditId: data.creditId,
+        creditName: data.creditName,
+        quantity: data.quantity,
+        price: data.price,
+        totalAmount: data.quantity * data.price,
+        timestamp: transaction.created_at,
+        status: transaction.status as 'completed' | 'pending' | 'failed'
+      },
+      carbonCredit: {
+        id: data.creditId,
+        name: data.creditName,
+        quantity: data.quantity,
+        vintage: data.vintage,
+        certificationBody: data.certificationBody,
+        carbonReduction: data.carbonReduction * data.quantity
+      },
+      totalCost: data.quantity * data.price
+    };
+  }
+);
 
 export const walletSlice = createSlice({
   name: 'wallet',
@@ -135,60 +175,6 @@ export const walletSlice = createSlice({
     setError: (state, action: PayloadAction<string | null>) => {
       state.error = action.payload;
     },
-    // For demo purposes - buy carbon credit
-    buyCarbonCredit: (state, action: PayloadAction<{ 
-      creditId: string, 
-      creditName: string, 
-      quantity: number, 
-      price: number,
-      vintage: string,
-      certificationBody: string,
-      carbonReduction: number
-    }>) => {
-      const { creditId, creditName, quantity, price, vintage, certificationBody, carbonReduction } = action.payload;
-      const totalAmount = quantity * price;
-      
-      // Check if user has enough balance
-      if (state.balance < totalAmount) {
-        return; // Not enough balance
-      }
-      
-      // Deduct balance
-      state.balance -= totalAmount;
-      
-      // Add carbon credits to wallet
-      const existingIndex = state.carbonCredits.findIndex(credit => credit.id === creditId);
-      
-      if (existingIndex !== -1) {
-        // Update existing credit
-        state.carbonCredits[existingIndex].quantity += quantity;
-      } else {
-        // Add new credit
-        state.carbonCredits.push({
-          id: creditId,
-          name: creditName,
-          quantity,
-          vintage,
-          certificationBody,
-          carbonReduction: carbonReduction * quantity
-        });
-      }
-      
-      // Add transaction
-      const transaction: Transaction = {
-        id: `tx${Date.now()}`,
-        type: 'buy',
-        creditId,
-        creditName,
-        quantity,
-        price,
-        totalAmount,
-        timestamp: new Date().toISOString(),
-        status: 'completed'
-      };
-      
-      state.transactions.unshift(transaction);
-    },
     // For demo purposes - sell carbon credit
     sellCarbonCredit: (state, action: PayloadAction<{ 
       creditId: string, 
@@ -233,6 +219,50 @@ export const walletSlice = createSlice({
       state.transactions.unshift(transaction);
     }
   },
+  extraReducers: (builder) => {
+    builder
+      .addCase(fetchWalletData.pending, (state) => {
+        state.loading = true;
+        state.error = null;
+      })
+      .addCase(fetchWalletData.fulfilled, (state, action) => {
+        state.loading = false;
+        state.carbonCredits = action.payload.carbonCredits;
+        state.transactions = action.payload.transactions;
+      })
+      .addCase(fetchWalletData.rejected, (state, action) => {
+        state.loading = false;
+        state.error = action.error.message || 'Failed to fetch wallet data';
+      })
+      .addCase(purchaseCarbonCredit.pending, (state) => {
+        state.loading = true;
+        state.error = null;
+      })
+      .addCase(purchaseCarbonCredit.fulfilled, (state, action) => {
+        state.loading = false;
+        
+        // Deduct balance
+        state.balance -= action.payload.totalCost;
+        
+        // Add carbon credits
+        const existingIndex = state.carbonCredits.findIndex(
+          credit => credit.id === action.payload.carbonCredit.id
+        );
+        
+        if (existingIndex !== -1) {
+          state.carbonCredits[existingIndex].quantity += action.payload.carbonCredit.quantity;
+        } else {
+          state.carbonCredits.push(action.payload.carbonCredit);
+        }
+        
+        // Add transaction
+        state.transactions.unshift(action.payload.transaction);
+      })
+      .addCase(purchaseCarbonCredit.rejected, (state, action) => {
+        state.loading = false;
+        state.error = action.error.message || 'Failed to purchase carbon credit';
+      });
+  },
 });
 
 export const { 
@@ -244,7 +274,6 @@ export const {
   setWalletConnection,
   setLoading,
   setError,
-  buyCarbonCredit,
   sellCarbonCredit
 } = walletSlice.actions;
 
