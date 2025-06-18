@@ -2,9 +2,9 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
-const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY!;
+const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
 
-const supabase = createClient(supabaseUrl, supabaseServiceKey);
+const supabase = createClient(supabaseUrl, supabaseAnonKey);
 
 export async function GET(request: NextRequest) {
   try {
@@ -32,7 +32,7 @@ export async function GET(request: NextRequest) {
     if (error) {
       console.error('Error fetching transactions:', error);
       return NextResponse.json(
-        { error: 'Failed to fetch transactions' },
+        { error: 'Failed to fetch transactions', details: error.message },
         { status: 500 }
       );
     }
@@ -41,7 +41,7 @@ export async function GET(request: NextRequest) {
   } catch (error) {
     console.error('Unexpected error:', error);
     return NextResponse.json(
-      { error: 'Internal server error' },
+      { error: 'Internal server error', details: error instanceof Error ? error.message : 'Unknown error' },
       { status: 500 }
     );
   }
@@ -79,7 +79,7 @@ export async function POST(request: NextRequest) {
     if (transactionError) {
       console.error('Error creating transaction:', transactionError);
       return NextResponse.json(
-        { error: 'Failed to create transaction' },
+        { error: 'Failed to create transaction', details: transactionError.message },
         { status: 500 }
       );
     }
@@ -101,18 +101,17 @@ export async function POST(request: NextRequest) {
       if (upsertError) {
         console.error('Error updating user credits:', upsertError);
         return NextResponse.json(
-          { error: 'Failed to update user credits' },
+          { error: 'Failed to update user credits', details: upsertError.message },
           { status: 500 }
         );
       }
 
       // Reduce available quantity in carbon_credits table
       const { error: updateError } = await supabase
-        .from('carbon_credits')
-        .update({ 
-          quantity: supabase.raw('quantity - ?', [quantity])
-        })
-        .eq('id', creditId);
+        .rpc('decrement_credit_quantity', {
+          credit_id: creditId,
+          decrement_amount: quantity
+        });
 
       if (updateError) {
         console.error('Error updating carbon credit quantity:', updateError);
@@ -123,7 +122,7 @@ export async function POST(request: NextRequest) {
   } catch (error) {
     console.error('Unexpected error:', error);
     return NextResponse.json(
-      { error: 'Internal server error' },
+      { error: 'Internal server error', details: error instanceof Error ? error.message : 'Unknown error' },
       { status: 500 }
     );
   }

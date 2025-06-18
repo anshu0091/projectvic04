@@ -2,10 +2,10 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
-const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY!;
+const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
 
-// Use service role key for server-side operations
-const supabase = createClient(supabaseUrl, supabaseServiceKey);
+// Use anon key for client-side operations
+const supabase = createClient(supabaseUrl, supabaseAnonKey);
 
 export async function GET(request: NextRequest) {
   try {
@@ -44,7 +44,7 @@ export async function GET(request: NextRequest) {
     if (error) {
       console.error('Error fetching carbon credits:', error);
       return NextResponse.json(
-        { error: 'Failed to fetch carbon credits' },
+        { error: 'Failed to fetch carbon credits', details: error.message },
         { status: 500 }
       );
     }
@@ -53,7 +53,7 @@ export async function GET(request: NextRequest) {
   } catch (error) {
     console.error('Unexpected error:', error);
     return NextResponse.json(
-      { error: 'Internal server error' },
+      { error: 'Internal server error', details: error instanceof Error ? error.message : 'Unknown error' },
       { status: 500 }
     );
   }
@@ -72,7 +72,7 @@ export async function POST(request: NextRequest) {
     if (error) {
       console.error('Error creating carbon credit:', error);
       return NextResponse.json(
-        { error: 'Failed to create carbon credit' },
+        { error: 'Failed to create carbon credit', details: error.message },
         { status: 500 }
       );
     }
@@ -81,7 +81,7 @@ export async function POST(request: NextRequest) {
   } catch (error) {
     console.error('Unexpected error:', error);
     return NextResponse.json(
-      { error: 'Internal server error' },
+      { error: 'Internal server error', details: error instanceof Error ? error.message : 'Unknown error' },
       { status: 500 }
     );
   }

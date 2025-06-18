@@ -78,44 +78,62 @@ export const fetchCarbonCredits = async (filters?: {
   location?: string;
   vintage?: string;
 }): Promise<CarbonCredit[]> => {
-  const params = new URLSearchParams();
-  
-  if (filters?.category) params.append('category', filters.category);
-  if (filters?.minPrice) params.append('minPrice', filters.minPrice.toString());
-  if (filters?.maxPrice) params.append('maxPrice', filters.maxPrice.toString());
-  if (filters?.location) params.append('location', filters.location);
-  if (filters?.vintage) params.append('vintage', filters.vintage);
+  try {
+    const params = new URLSearchParams();
+    
+    if (filters?.category) params.append('category', filters.category);
+    if (filters?.minPrice) params.append('minPrice', filters.minPrice.toString());
+    if (filters?.maxPrice) params.append('maxPrice', filters.maxPrice.toString());
+    if (filters?.location) params.append('location', filters.location);
+    if (filters?.vintage) params.append('vintage', filters.vintage);
 
-  const response = await fetch(`/api/carbon-credits?${params.toString()}`);
-  
-  if (!response.ok) {
-    throw new Error('Failed to fetch carbon credits');
+    const response = await fetch(`/api/carbon-credits?${params.toString()}`);
+    
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}));
+      throw new Error(errorData.error || `HTTP error! status: ${response.status}`);
+    }
+
+    const { data } = await response.json();
+    return data.map(transformApiCreditToRedux);
+  } catch (error) {
+    console.error('Error fetching carbon credits:', error);
+    throw new Error(error instanceof Error ? error.message : 'Failed to fetch carbon credits');
   }
-
-  const { data } = await response.json();
-  return data.map(transformApiCreditToRedux);
 };
 
 export const fetchUserCarbonCredits = async (userId: string) => {
-  const response = await fetch(`/api/user-credits?userId=${userId}`);
-  
-  if (!response.ok) {
-    throw new Error('Failed to fetch user carbon credits');
-  }
+  try {
+    const response = await fetch(`/api/user-credits?userId=${userId}`);
+    
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}));
+      throw new Error(errorData.error || `HTTP error! status: ${response.status}`);
+    }
 
-  const { data } = await response.json();
-  return data;
+    const { data } = await response.json();
+    return data;
+  } catch (error) {
+    console.error('Error fetching user carbon credits:', error);
+    throw new Error(error instanceof Error ? error.message : 'Failed to fetch user carbon credits');
+  }
 };
 
 export const fetchUserTransactions = async (userId: string) => {
-  const response = await fetch(`/api/transactions?userId=${userId}`);
-  
-  if (!response.ok) {
-    throw new Error('Failed to fetch user transactions');
-  }
+  try {
+    const response = await fetch(`/api/transactions?userId=${userId}`);
+    
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}));
+      throw new Error(errorData.error || `HTTP error! status: ${response.status}`);
+    }
 
-  const { data } = await response.json();
-  return data;
+    const { data } = await response.json();
+    return data;
+  } catch (error) {
+    console.error('Error fetching user transactions:', error);
+    throw new Error(error instanceof Error ? error.message : 'Failed to fetch user transactions');
+  }
 };
 
 export const createTransaction = async (transactionData: {
@@ -125,18 +143,24 @@ export const createTransaction = async (transactionData: {
   quantity: number;
   price: number;
 }) => {
-  const response = await fetch('/api/transactions', {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify(transactionData),
-  });
+  try {
+    const response = await fetch('/api/transactions', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(transactionData),
+    });
 
-  if (!response.ok) {
-    throw new Error('Failed to create transaction');
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}));
+      throw new Error(errorData.error || `HTTP error! status: ${response.status}`);
+    }
+
+    const { data } = await response.json();
+    return data;
+  } catch (error) {
+    console.error('Error creating transaction:', error);
+    throw new Error(error instanceof Error ? error.message : 'Failed to create transaction');
   }
-
-  const { data } = await response.json();
-  return data;
 };
