@@ -79,6 +79,8 @@ export const fetchCarbonCredits = async (filters?: {
   vintage?: string;
 }): Promise<CarbonCredit[]> => {
   try {
+    console.log('Fetching carbon credits with filters:', filters);
+    
     const params = new URLSearchParams();
     
     if (filters?.category) params.append('category', filters.category);
@@ -87,15 +89,44 @@ export const fetchCarbonCredits = async (filters?: {
     if (filters?.location) params.append('location', filters.location);
     if (filters?.vintage) params.append('vintage', filters.vintage);
 
-    const response = await fetch(`/api/carbon-credits?${params.toString()}`);
+    const url = `/api/carbon-credits${params.toString() ? `?${params.toString()}` : ''}`;
+    console.log('Fetching from URL:', url);
+
+    const response = await fetch(url, {
+      method: 'GET',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+    });
+    
+    console.log('Response status:', response.status);
     
     if (!response.ok) {
-      const errorData = await response.json().catch(() => ({}));
+      const errorText = await response.text();
+      console.error('Response error:', errorText);
+      
+      let errorData;
+      try {
+        errorData = JSON.parse(errorText);
+      } catch {
+        errorData = { error: errorText };
+      }
+      
       throw new Error(errorData.error || `HTTP error! status: ${response.status}`);
     }
 
-    const { data } = await response.json();
-    return data.map(transformApiCreditToRedux);
+    const result = await response.json();
+    console.log('API response:', result);
+    
+    if (!result.data) {
+      console.warn('No data field in response:', result);
+      return [];
+    }
+
+    const transformedData = result.data.map(transformApiCreditToRedux);
+    console.log('Transformed data:', transformedData);
+    
+    return transformedData;
   } catch (error) {
     console.error('Error fetching carbon credits:', error);
     throw new Error(error instanceof Error ? error.message : 'Failed to fetch carbon credits');

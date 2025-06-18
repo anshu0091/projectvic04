@@ -16,30 +16,14 @@ export async function GET(request: NextRequest) {
     const location = searchParams.get('location');
     const vintage = searchParams.get('vintage');
 
-    let query = supabase
-      .from('carbon_credits')
-      .select('*')
-      .eq('status', 'available')
-      .order('created_at', { ascending: false });
-
-    // Apply filters
-    if (category) {
-      query = query.eq('category', category);
-    }
-    if (minPrice) {
-      query = query.gte('price', parseFloat(minPrice));
-    }
-    if (maxPrice) {
-      query = query.lte('price', parseFloat(maxPrice));
-    }
-    if (location) {
-      query = query.eq('location', location);
-    }
-    if (vintage) {
-      query = query.eq('vintage', vintage);
-    }
-
-    const { data, error } = await query;
+    // Use the database function for better performance and consistency
+    const { data, error } = await supabase.rpc('get_available_credits', {
+      filter_category: category,
+      filter_min_price: minPrice ? parseFloat(minPrice) : null,
+      filter_max_price: maxPrice ? parseFloat(maxPrice) : null,
+      filter_location: location,
+      filter_vintage: vintage
+    });
 
     if (error) {
       console.error('Error fetching carbon credits:', error);
@@ -49,7 +33,7 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    return NextResponse.json({ data });
+    return NextResponse.json({ data: data || [] });
   } catch (error) {
     console.error('Unexpected error:', error);
     return NextResponse.json(
