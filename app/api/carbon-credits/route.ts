@@ -16,26 +16,56 @@ export async function GET(request: NextRequest) {
     const location = searchParams.get('location');
     const vintage = searchParams.get('vintage');
 
-    // Use the database function for better performance and consistency
-    const { data, error } = await supabase.rpc('get_available_credits', {
-      filter_category: category,
-      filter_min_price: minPrice ? parseFloat(minPrice) : null,
-      filter_max_price: maxPrice ? parseFloat(maxPrice) : null,
-      filter_location: location,
-      filter_vintage: vintage
+    console.log('API: Fetching carbon credits with params:', {
+      category,
+      minPrice,
+      maxPrice,
+      location,
+      vintage
     });
 
+    // Build query with filters
+    let query = supabase
+      .from('carbon_credits')
+      .select('*')
+      .eq('status', 'available')
+      .gt('quantity', 0);
+
+    // Apply filters if provided
+    if (category) {
+      query = query.eq('category', category);
+    }
+    if (minPrice) {
+      query = query.gte('price', parseFloat(minPrice));
+    }
+    if (maxPrice) {
+      query = query.lte('price', parseFloat(maxPrice));
+    }
+    if (location) {
+      query = query.eq('location', location);
+    }
+    if (vintage) {
+      query = query.eq('vintage', vintage);
+    }
+
+    // Order by created_at descending
+    query = query.order('created_at', { ascending: false });
+
+    const { data, error } = await query;
+
     if (error) {
-      console.error('Error fetching carbon credits:', error);
+      console.error('Supabase error:', error);
       return NextResponse.json(
-        { error: 'Failed to fetch carbon credits', details: error.message },
+        { error: 'Database error', details: error.message },
         { status: 500 }
       );
     }
 
+    console.log('API: Successfully fetched', data?.length || 0, 'carbon credits');
     return NextResponse.json({ data: data || [] });
+
   } catch (error) {
-    console.error('Unexpected error:', error);
+    console.error('API: Unexpected error:', error);
     return NextResponse.json(
       { error: 'Internal server error', details: error instanceof Error ? error.message : 'Unknown error' },
       { status: 500 }

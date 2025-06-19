@@ -8,13 +8,16 @@ const supabase = createClient(supabaseUrl, supabaseAnonKey);
 
 export async function GET() {
   try {
-    // Test database connection
+    console.log('Health check: Testing database connection...');
+    
+    // Test database connection with a simple query
     const { data, error } = await supabase
       .from('carbon_credits')
       .select('count')
       .limit(1);
 
     if (error) {
+      console.error('Health check: Database error:', error);
       return NextResponse.json(
         { 
           status: 'unhealthy', 
@@ -26,13 +29,16 @@ export async function GET() {
       );
     }
 
+    console.log('Health check: Database connection successful');
     return NextResponse.json({
       status: 'healthy',
       database: 'connected',
       timestamp: new Date().toISOString(),
-      uptime: process.uptime()
+      uptime: process.uptime(),
+      environment: process.env.NODE_ENV || 'development'
     });
   } catch (error) {
+    console.error('Health check: Unexpected error:', error);
     return NextResponse.json(
       { 
         status: 'unhealthy', 

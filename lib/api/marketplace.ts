@@ -20,38 +20,6 @@ export interface ApiCarbonCredit {
   updated_at: string;
 }
 
-export interface UserCarbonCredit {
-  id: string;
-  user_id: string;
-  credit_id: string;
-  quantity: number;
-  purchase_price: number;
-  purchased_at: string;
-  carbon_credits: {
-    name: string;
-    vintage: string;
-    certification_body: string;
-    carbon_reduction: number;
-    category: string;
-  };
-}
-
-export interface ApiTransaction {
-  id: string;
-  user_id: string;
-  credit_id: string;
-  type: 'buy' | 'sell';
-  quantity: number;
-  price: number;
-  total_amount: number;
-  status: 'completed' | 'pending' | 'failed';
-  tx_hash?: string;
-  created_at: string;
-  carbon_credits: {
-    name: string;
-  };
-}
-
 // Transform API data to match Redux state structure
 export const transformApiCreditToRedux = (apiCredit: ApiCarbonCredit): CarbonCredit => ({
   id: apiCredit.id,
@@ -79,7 +47,7 @@ export const fetchCarbonCredits = async (filters?: {
   vintage?: string;
 }): Promise<CarbonCredit[]> => {
   try {
-    console.log('Fetching carbon credits with filters:', filters);
+    console.log('Client: Fetching carbon credits with filters:', filters);
     
     const params = new URLSearchParams();
     
@@ -90,7 +58,7 @@ export const fetchCarbonCredits = async (filters?: {
     if (filters?.vintage) params.append('vintage', filters.vintage);
 
     const url = `/api/carbon-credits${params.toString() ? `?${params.toString()}` : ''}`;
-    console.log('Fetching from URL:', url);
+    console.log('Client: Fetching from URL:', url);
 
     const response = await fetch(url, {
       method: 'GET',
@@ -99,11 +67,11 @@ export const fetchCarbonCredits = async (filters?: {
       },
     });
     
-    console.log('Response status:', response.status);
+    console.log('Client: Response status:', response.status);
     
     if (!response.ok) {
       const errorText = await response.text();
-      console.error('Response error:', errorText);
+      console.error('Client: Response error:', errorText);
       
       let errorData;
       try {
@@ -116,19 +84,19 @@ export const fetchCarbonCredits = async (filters?: {
     }
 
     const result = await response.json();
-    console.log('API response:', result);
+    console.log('Client: API response:', result);
     
     if (!result.data) {
-      console.warn('No data field in response:', result);
+      console.warn('Client: No data field in response:', result);
       return [];
     }
 
     const transformedData = result.data.map(transformApiCreditToRedux);
-    console.log('Transformed data:', transformedData);
+    console.log('Client: Transformed data:', transformedData);
     
     return transformedData;
   } catch (error) {
-    console.error('Error fetching carbon credits:', error);
+    console.error('Client: Error fetching carbon credits:', error);
     throw new Error(error instanceof Error ? error.message : 'Failed to fetch carbon credits');
   }
 };
